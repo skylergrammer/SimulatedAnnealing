@@ -8,13 +8,14 @@ import sklearn.cross_validation as cross_validation
 from sklearn.base import clone
 import numpy as np
 from sklearn.metrics.scorer import get_scorer
-
+from sklearn.externals.joblib import Parallel, delayed
+from sklearn.cross_validation import _fit_and_score
 
 class SimulatedAnneal(object):
     def __init__(self, classifier, param_grid, scoring='f1_macro',
                  T=10, T_min=0.0001, alpha=0.75, n_trans=10,
                  max_iter=300, max_runtime=300, cv=3,
-                 verbose=False, refit=True):
+                 verbose=False, refit=True, n_jobs=1):
 
         assert alpha <= 1.0
         assert T > T_min
@@ -63,6 +64,7 @@ class SimulatedAnneal(object):
         self.__max_runtime = max_runtime
         self.__cv = cv
         self.__refit = refit
+        self.__n_jobs = n_jobs
 
         # Exposed attributes
         self._scorer = scoring
@@ -94,7 +96,12 @@ class SimulatedAnneal(object):
         old_clf = clone(self.__clf)
         old_params = dict(zip(grid.keys(), random.choice(possible_params)))
         old_clf.set_params(**old_params)
-        old_score, old_std = CVFolds(old_clf, scorer=score_func, cv=cv).fit_score(X, y)
+        
+        if self.__n_jobs > 1:
+            old_score, old_std = MultiProcCvFolds(old_clf, score_func, cv, self.__n_jobs, 
+                                                  self.__verbose).fit_score(X, y)
+        else:
+            old_score, old_std = CVFolds(old_clf, scorer=score_func, cv=cv).fit_score(X, y)
 
         # Variables to hold the best params
         best_score = old_score
@@ -172,7 +179,32 @@ class SimulatedAnneal(object):
         self.best_params_ = best_params
         return None
 
-
+class MultiProcCvFolds(object):
+    def __init__(self, clf, metric, cv, n_jobs=1, verbose=0, pre_dispatch='2*n_jobs'):
+        self.clf = clf
+        self.metric = metric
+        self.cv = cv
+        self.n_jobs = n_jobs
+        self.verbose = verbose
+        self.pre_dispatch = pre_dispatch
+    
+    def fit_score(self, X, Y):        
+        
+        out = Parallel(
+            n_jobs=self.n_jobs, verbose=self.verbose,
+            pre_dispatch=self.pre_dispatch
+        )(
+            delayed(_fit_and_score)(clone(self.clf), X, Y, self.metric,
+                                    train, test, self.verbose, {},
+                                    {}, return_parameters=False,
+                                    error_score='raise')
+                for train, test in self.cv)
+        
+        # Out is a list of triplet: score, estimator, n_test_samples
+        scores = zip(*out)[0]
+        return np.mean(scores), np.std(scores)
+        
+        
 class CVFolds(object):
     def __init__(self, classifier, scorer, cv=3):
         self.__clf = classifier
