@@ -95,13 +95,13 @@ class SimulatedAnneal(object):
         # Compute the initial score based off randomly selected param
         old_est = clone(self.__est)
         old_params = dict(zip(grid.keys(), random.choice(possible_params)))
-        old_clf.set_params(**old_params)
+        old_est.set_params(**old_params)
         
         if self.__n_jobs > 1:
-            old_score, old_std = MultiProcCvFolds(old_clf, score_func, cv, self.__n_jobs, 
+            old_score, old_std = MultiProcCvFolds(old_est, score_func, cv, self.__n_jobs, 
                                                   self.__verbose).fit_score(X, y)
         else:
-            old_score, old_std = CVFolds(old_clf, scorer=score_func, cv=cv).fit_score(X, y)
+            old_score, old_std = CVFolds(old_est, scorer=score_func, cv=cv).fit_score(X, y)
 
         # Variables to hold the best params
         best_score = old_score
