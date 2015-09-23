@@ -96,9 +96,9 @@ class SimulatedAnneal(object):
         old_est = clone(self.__est)
         old_params = dict(zip(grid.keys(), random.choice(possible_params)))
         old_est.set_params(**old_params)
-        
+
         if self.__n_jobs > 1:
-            old_score, old_std = MultiProcCvFolds(old_est, score_func, cv, self.__n_jobs, 
+            old_score, old_std = MultiProcCvFolds(old_est, score_func, cv, self.__n_jobs,
                                                   self.__verbose).fit_score(X, y)
         else:
             old_score, old_std = CVFolds(old_est, scorer=score_func, cv=cv).fit_score(X, y)
@@ -139,7 +139,8 @@ class SimulatedAnneal(object):
                     # If unseen train estimator on new params and store score
                     new_est = clone(self.__est)
                     new_est.set_params(**new_params)
-                    new_score, new_std = CVFolds(new_est, scorer=score_func, cv=cv).fit_score(X, y)
+                    new_score, new_std = MultiProcCvFolds(new_est, score_func, cv, self.__n_jobs,
+                                                          self.__verbose).fit_score(X, y)
                     states_checked[json.dumps(new_params)] = (new_score, new_std)
                 grid_scores.append((total_iter, T, new_score, new_std, new_params))
 
@@ -185,9 +186,9 @@ class MultiProcCvFolds(object):
         self.n_jobs = n_jobs
         self.verbose = verbose
         self.pre_dispatch = pre_dispatch
-    
-    def fit_score(self, X, Y):        
-        
+
+    def fit_score(self, X, Y):
+
         out = Parallel(
             n_jobs=self.n_jobs, verbose=self.verbose,
             pre_dispatch=self.pre_dispatch
@@ -197,12 +198,12 @@ class MultiProcCvFolds(object):
                                     {}, return_parameters=False,
                                     error_score='raise')
                 for train, test in self.cv)
-        
+
         # Out is a list of triplet: score, estimator, n_test_samples
         scores = zip(*out)[0]
         return np.mean(scores), np.std(scores)
-        
-        
+
+
 class CVFolds(object):
     def __init__(self, estimator, scorer, cv=3):
         try:
