@@ -181,7 +181,7 @@ class SimulatedAnneal(object):
 class MultiProcCvFolds(object):
     def __init__(self, clf, metric, cv, n_jobs=1, verbose=0, pre_dispatch='2*n_jobs'):
         self.clf = clf
-        self.metric = metric
+        self.metric = get_scorer(metric)
         self.cv = cv
         self.n_jobs = n_jobs
         self.verbose = verbose
