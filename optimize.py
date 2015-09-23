@@ -12,7 +12,7 @@ from sklearn.externals.joblib import Parallel, delayed
 from sklearn.cross_validation import _fit_and_score
 
 class SimulatedAnneal(object):
-    def __init__(self, classifier, param_grid, scoring='f1_macro',
+    def __init__(self, estimator, param_grid, scoring='f1_macro',
                  T=10, T_min=0.0001, alpha=0.75, n_trans=10,
                  max_iter=300, max_runtime=300, cv=3,
                  verbose=False, refit=True, n_jobs=1):
@@ -38,8 +38,8 @@ class SimulatedAnneal(object):
         if 0 < max_iter <= 1:
             max_iter = int(max_iter*n_possible_iters)
 
-        assert hasattr(classifier, 'fit'), "The provided classifer has no fit method."
-        assert hasattr(classifier, 'predict'), "The provided classifier has no predict method"
+        assert hasattr(estimator, 'fit'), "The provided classifer has no fit method."
+        assert hasattr(estimator, 'predict'), "The provided estimator has no predict method"
         assert max_iter is not None and max_iter > 0
         if max_iter > n_possible_iters and verbose:
             print("\nWARNING: The value for max_iter=%s does not constrain the number of "
@@ -58,7 +58,7 @@ class SimulatedAnneal(object):
         self.__alpha = alpha
         self.__max_iter = max_iter
         self.__grid = param_grid
-        self.__clf = classifier
+        self.__est = estimator
         self.__verbose = verbose
         self.__n_trans = n_trans
         self.__max_runtime = max_runtime
@@ -89,11 +89,11 @@ class SimulatedAnneal(object):
         # List of all possible parameter combinations
         possible_params = list(product(*grid.values()))
 
-        # Computes the acceptance probability as a function of T
+        # Computes the acceptance probability as a function of T; maximization
         accept_prob = lambda old, new, T: np.exp((new-old)/T)
 
         # Compute the initial score based off randomly selected param
-        old_clf = clone(self.__clf)
+        old_est = clone(self.__est)
         old_params = dict(zip(grid.keys(), random.choice(possible_params)))
         old_clf.set_params(**old_params)
         
@@ -126,30 +126,28 @@ class SimulatedAnneal(object):
             iter_ = 0
             while iter_ < n_trans:
                 total_iter += 1
+                # Move to a random neighboring point in param space
                 new_params = copy(old_params)
-                # Select random parameter to change
                 rand_key = random.choice(grid.keys())
                 new_rand_key_val = random.choice([v for v in grid[rand_key]
                                                   if v != old_params[rand_key]])
-                # Set randomly selected parameter to new randomly selected value
                 new_params[rand_key] = new_rand_key_val
-                # Look to see if the score has been computed for the given params
                 try:
+                    # Look to see if the score has been computed for the given params
                     new_score, new_std = states_checked[json.dumps(new_params)]
-                # If unseen train classifier on new params and store score
                 except:
-                    new_clf = clone(self.__clf)
-                    new_clf.set_params(**new_params)
-                    new_score, new_std = CVFolds(new_clf, scorer=score_func, cv=cv).fit_score(X, y)
+                    # If unseen train estimator on new params and store score
+                    new_est = clone(self.__est)
+                    new_est.set_params(**new_params)
+                    new_score, new_std = CVFolds(new_est, scorer=score_func, cv=cv).fit_score(X, y)
                     states_checked[json.dumps(new_params)] = (new_score, new_std)
-
                 grid_scores.append((total_iter, T, new_score, new_std, new_params))
+
                 # Keep track of the best score and best params
                 if new_score > best_score:
                     best_score = new_score
                     best_params = new_params
 
-                # If verbose print Temp and params
                 if self.__verbose:
                     print("%s T: %s, score: %s, std: %s, params: %s"
                           % (str(total_iter), '{:.5f}'.format(T),
@@ -162,16 +160,16 @@ class SimulatedAnneal(object):
                 if a > a_rand:
                     old_params = new_params
                     old_score = new_score
+
                 t_elapsed = dt(time_at_start, time.time())
                 iter_ += 1
-            # Decrease the temperature
-            T = T*alpha
+            T *= alpha
 
         if self.__refit:
-            # Refit a classifier with the best params
-            self.__clf.set_params(**best_params)
-            self.__clf.fit(X, y)
-            self.best_estimator_ = self.__clf
+            # Refit a estimator with the best params
+            self.__est.set_params(**best_params)
+            self.__est.fit(X, y)
+            self.best_estimator_ = self.__est
 
         self.runtime_ = t_elapsed
         self.grid_scores_ = grid_scores
@@ -206,8 +204,12 @@ class MultiProcCvFolds(object):
         
         
 class CVFolds(object):
-    def __init__(self, classifier, scorer, cv=3):
-        self.__clf = classifier
+    def __init__(self, estimator, scorer, cv=3):
+        try:
+            cv = int(cv)
+        except:
+            cv = cv
+        self.__est = estimator
         self.__cv = cv
         self.__scorer = get_scorer(scorer)
 
@@ -221,8 +223,8 @@ class CVFolds(object):
         for train_index, test_index in cross_valid:
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
-            clf = clone(self.__clf)
-            clf.fit(X_train, y_train)
-            k_score = scorer(clf, X_test, y_test)
+            est = clone(self.__est)
+            est.fit(X_train, y_train)
+            k_score = scorer(est, X_test, y_test)
             scores.append(k_score)
         return (np.mean(scores), np.std(scores))
