@@ -131,7 +131,8 @@ class SimulatedAnneal(object):
                     new_score, new_std = states_checked[json.dumps(new_params)]
                 # If unseen train classifier on new params and store score
                 except:
-                    new_clf = self.__clf.set_params(**new_params)
+                    new_clf = clone(self.__clf)
+                    new_clf.set_params(**new_params)
                     new_score, new_std = CVFolds(new_clf, scorer=score_func, cv=cv).fit_score(X, y)
                     states_checked[json.dumps(new_params)] = (new_score, new_std)
 
