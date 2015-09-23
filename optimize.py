@@ -87,7 +87,7 @@ class SimulatedAnneal(object):
         # List of all possible parameter combinations
         possible_params = list(product(*grid.values()))
 
-        # Computes the acceptance probability as a function of T
+        # Computes the acceptance probability as a function of T; maximization
         accept_prob = lambda old, new, T: np.exp((new-old)/T)
 
         # Compute the initial score based off randomly selected param
@@ -119,30 +119,28 @@ class SimulatedAnneal(object):
             iter_ = 0
             while iter_ < n_trans:
                 total_iter += 1
+                # Move to a random neighboring point in param space
                 new_params = copy(old_params)
-                # Select random parameter to change
                 rand_key = random.choice(grid.keys())
                 new_rand_key_val = random.choice([v for v in grid[rand_key]
                                                   if v != old_params[rand_key]])
-                # Set randomly selected parameter to new randomly selected value
                 new_params[rand_key] = new_rand_key_val
-                # Look to see if the score has been computed for the given params
                 try:
+                    # Look to see if the score has been computed for the given params
                     new_score, new_std = states_checked[json.dumps(new_params)]
-                # If unseen train classifier on new params and store score
                 except:
+                    # If unseen train classifier on new params and store score
                     new_clf = clone(self.__clf)
                     new_clf.set_params(**new_params)
                     new_score, new_std = CVFolds(new_clf, scorer=score_func, cv=cv).fit_score(X, y)
                     states_checked[json.dumps(new_params)] = (new_score, new_std)
-
                 grid_scores.append((total_iter, T, new_score, new_std, new_params))
+
                 # Keep track of the best score and best params
                 if new_score > best_score:
                     best_score = new_score
                     best_params = new_params
 
-                # If verbose print Temp and params
                 if self.__verbose:
                     print("%s T: %s, score: %s, std: %s, params: %s"
                           % (str(total_iter), '{:.5f}'.format(T),
@@ -155,10 +153,10 @@ class SimulatedAnneal(object):
                 if a > a_rand:
                     old_params = new_params
                     old_score = new_score
+
                 t_elapsed = dt(time_at_start, time.time())
                 iter_ += 1
-            # Decrease the temperature
-            T = T*alpha
+            T *= alpha
 
         if self.__refit:
             # Refit a classifier with the best params
@@ -175,6 +173,10 @@ class SimulatedAnneal(object):
 
 class CVFolds(object):
     def __init__(self, classifier, scorer, cv=3):
+        try:
+            cv = int(cv)
+        except:
+            cv = cv
         self.__clf = classifier
         self.__cv = cv
         self.__scorer = get_scorer(scorer)
