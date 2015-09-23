@@ -1,64 +1,13 @@
-from itertools import product
-import random
-from sklearn.metrics import (make_scorer, r2_score, mean_squared_error,
-                             mean_absolute_error, median_absolute_error,
-                             accuracy_score, f1_score, roc_auc_score,
-                             average_precision_score, precision_score,
-                             recall_score, log_loss, adjusted_rand_score,
-                             silhouette_score)
-from sklearn import cross_validation
-from sklearn.base import clone
-from copy import copy
-import numpy as np
 import json
 import sys
 import time
-
-
-# Standard regression scores
-r2_scorer = make_scorer(r2_score)
-mean_squared_error_scorer = make_scorer(mean_squared_error,
-                                        greater_is_better=False)
-mean_absolute_error_scorer = make_scorer(mean_absolute_error,
-                                         greater_is_better=False)
-median_absolute_error_scorer = make_scorer(median_absolute_error,
-                                           greater_is_better=False)
-
-# Standard Classification Scores
-accuracy_scorer = make_scorer(accuracy_score)
-f1_scorer = make_scorer(f1_score)
-
-# Score functions that need decision values
-roc_auc_scorer = make_scorer(roc_auc_score, greater_is_better=True,
-                             needs_threshold=True)
-average_precision_scorer = make_scorer(average_precision_score,
-                                       needs_threshold=True)
-precision_scorer = make_scorer(precision_score)
-recall_scorer = make_scorer(recall_score)
-
-# Score function for probabilistic classification
-log_loss_scorer = make_scorer(log_loss, greater_is_better=False,
-                              needs_proba=True)
-
-# Clustering scores
-adjusted_rand_scorer = make_scorer(adjusted_rand_score)
-silhouette_scorer = make_scorer(silhouette_score)
-SCORERS = dict(r2=r2_scorer,
-               median_absolute_error=median_absolute_error_scorer,
-               mean_absolute_error=mean_absolute_error_scorer,
-               mean_squared_error=mean_squared_error_scorer,
-               accuracy=accuracy_scorer, roc_auc=roc_auc_scorer,
-               average_precision=average_precision_scorer,
-               log_loss=log_loss_scorer,
-               adjusted_rand_score=adjusted_rand_scorer,
-               silhouette_scorer=silhouette_scorer)
-
-for name, metric in [('precision', precision_score),
-                     ('recall', recall_score), ('f1', f1_score)]:
-    SCORERS[name] = make_scorer(metric)
-    for average in ['macro', 'micro', 'samples', 'weighted']:
-        qualified_name = '{0}_{1}'.format(name, average)
-        SCORERS[qualified_name] = make_scorer(metric, average=average)
+from copy import copy
+import random
+from itertools import product
+import sklearn.cross_validation as cross_validation
+from sklearn.base import clone
+import numpy as np
+from sklearn.metrics.scorer import get_scorer
 
 
 class SimulatedAnneal(object):
@@ -82,27 +31,25 @@ class SimulatedAnneal(object):
                 sys.stderr.write(str(sys.exc_info()[0]))
                 sys.exit()
 
-        # If scoring a string, get scorer from SCORER
-        if isinstance(scoring, basestring):
-            try:
-                score_function = SCORERS[scoring]._score_func
-            except:
-                sys.exit("\nERROR: %s not a valid score function."
-                "\nUse one of the following: %s"
-                % (scoring, ', '.join(SCORERS.keys())))
-        # If scoring not a string, assume the user has provided a scoring function
-        else:
-            score_function = scoring
-
         # The total number of iterations that can be performed
         n_possible_iters = n_trans*((np.log(T_min)-np.log(T))/np.log(alpha))
         # If fractional max_iter provided, convert to a number
-        if max_iter <= 1:
+        if 0 < max_iter <= 1:
             max_iter = int(max_iter*n_possible_iters)
 
         assert hasattr(classifier, 'fit'), "The provided classifer has no fit method."
         assert hasattr(classifier, 'predict'), "The provided classifier has no predict method"
-        assert max_iter <= n_possible_iters,  "WARNING: The value for max_iter=%s is greater than the number of possible iterations for the specified cooling schedule: %s\n" % (str(max_iter), str(int(n_possible_iters)))
+        assert max_iter is not None and max_iter > 0
+        if max_iter > n_possible_iters and verbose:
+            print("\nWARNING: The value for max_iter=%s does not constrain the number of "
+                  "iterations for the specified cooling schedule (%s).  Setting"
+                  " max_iter=%s"
+                  % (str(max_iter), str(int(n_possible_iters)), str(int(n_possible_iters))))
+            max_iter = n_possible_iters
+
+        if verbose:
+            print("\nINFO: Number of possible iterations given cooling schedule: %s\n"
+                  % str(int(n_possible_iters)))
 
         # Hidden attributes
         self.__T = T
@@ -118,7 +65,7 @@ class SimulatedAnneal(object):
         self.__refit = refit
 
         # Exposed attributes
-        self._scorer = score_function
+        self._scorer = scoring
         self.best_params_ = None
         self.best_score_ = None
         self.best_estimator_ = None
@@ -186,7 +133,6 @@ class SimulatedAnneal(object):
                 except:
                     new_clf = self.__clf.set_params(**new_params)
                     new_score, new_std = CVFolds(new_clf, scorer=score_func, cv=cv).fit_score(X, y)
-                    # Add param combo to hash table of states checked
                     states_checked[json.dumps(new_params)] = (new_score, new_std)
 
                 grid_scores.append((total_iter, T, new_score, new_std, new_params))
@@ -230,10 +176,9 @@ class CVFolds(object):
     def __init__(self, classifier, scorer, cv=3):
         self.__clf = classifier
         self.__cv = cv
-        self.__scorer = scorer
+        self.__scorer = get_scorer(scorer)
 
     def fit_score(self, X, y):
-
         if isinstance(self.__cv, int):
             cross_valid = cross_validation.KFold(len(y), n_folds=self.__cv)
         else:
@@ -245,7 +190,6 @@ class CVFolds(object):
             y_train, y_test = y[train_index], y[test_index]
             clf = clone(self.__clf)
             clf.fit(X_train, y_train)
-            y_test_pred = clf.predict(X_test)
-            k_score = scorer(y_test, y_test_pred)
+            k_score = scorer(clf, X_test, y_test)
             scores.append(k_score)
         return (np.mean(scores), np.std(scores))
