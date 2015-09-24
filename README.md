@@ -43,6 +43,7 @@ Example
 from sklearn.cross_validation import train_test_split
 from sklearn import svm, datasets
 from sklearn.metrics import classification_report
+from simulated_annealing.optimize import SimulatedAnneal
 
 iris = datasets.load_iris()
 X = iris.data
