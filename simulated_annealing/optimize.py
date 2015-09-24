@@ -1,4 +1,3 @@
-import json
 import sys
 import time
 from copy import copy
@@ -109,7 +108,7 @@ class SimulatedAnneal(object):
 
         # Hash table to store states checked and the score for that model
         states_checked = {}
-        states_checked[json.dumps(old_params)] = (old_score, old_std)
+        states_checked[tuple(sorted(old_params.items()))] = (old_score, old_std)
         total_iter = 1
         grid_scores = [(1, T, old_score, old_std, old_params)]
 
@@ -134,14 +133,14 @@ class SimulatedAnneal(object):
                 new_params[rand_key] = new_rand_key_val
                 try:
                     # Look to see if the score has been computed for the given params
-                    new_score, new_std = states_checked[json.dumps(new_params)]
+                    new_score, new_std = states_checked[tuple(sorted(new_params.items()))]
                 except:
                     # If unseen train estimator on new params and store score
                     new_est = clone(self.__est)
                     new_est.set_params(**new_params)
                     new_score, new_std = MultiProcCvFolds(new_est, score_func, cv, self.__n_jobs,
                                                           self.__verbose).fit_score(X, y)
-                    states_checked[json.dumps(new_params)] = (new_score, new_std)
+                    states_checked[tuple(sorted(new_params.items()))] = (new_score, new_std)
                 grid_scores.append((total_iter, T, new_score, new_std, new_params))
 
                 # Keep track of the best score and best params
@@ -153,7 +152,7 @@ class SimulatedAnneal(object):
                     print("%s T: %s, score: %s, std: %s, params: %s"
                           % (str(total_iter), '{:.5f}'.format(T),
                              '{:.3f}'.format(new_score), '{:.3f}'.format(new_std),
-                             json.dumps(new_params)))
+                             str(new_params)))
 
                 # Decide whether to keep old params or move to new params
                 a = accept_prob(old_score, new_score, T)
