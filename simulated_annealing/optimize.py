@@ -188,7 +188,8 @@ class MultiProcCvFolds(object):
         self.pre_dispatch = pre_dispatch
 
     def fit_score(self, X, Y):
-
+        if isinstance(self.cv, int):
+            self.cv = cross_validation.KFold(len(y), n_folds=self.__cv)
         out = Parallel(
             n_jobs=self.n_jobs, verbose=self.verbose,
             pre_dispatch=self.pre_dispatch
