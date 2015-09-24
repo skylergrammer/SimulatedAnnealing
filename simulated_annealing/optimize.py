@@ -176,7 +176,6 @@ class SimulatedAnneal(object):
         self.grid_scores_ = grid_scores
         self.best_score_ = best_score
         self.best_params_ = best_params
-        return None
 
 class MultiProcCvFolds(object):
     def __init__(self, clf, metric, cv, n_jobs=1, verbose=0, pre_dispatch='2*n_jobs'):
