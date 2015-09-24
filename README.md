@@ -25,7 +25,7 @@ Description of Simulated Annealing Algorithm
     - `total_runtime > max_runtime`
 - Return the score and hyperparameters of the best solution
 
-The decision to move to a new solution from an old solution is probabilistic and temperature dependent.  Specifically, the comparison between the solutions is performed by computing `a = exp((score_new - score_old)/T)`.  The value of `a` is then compared to a randomly generated number in [0,1].  If `a` is greater than the randomly generated number, the algorithm moves to the hyperparameters of the neighboring solution.  This means that while `T` is large, *almost all new solutions are preferred regardless of their score*.  As `T` decreases, the likelihood of moving to hyperparameters resulting in a poor solution decreases.  
+The decision to move to a new solution from an old solution is probabilistic and temperature dependent.  Specifically, the comparison between the solutions is performed by computing the acceptance probability `a = exp((score_new - score_old)/T)`.  The value of `a` is then compared to a randomly generated number in [0,1].  If `a` is greater than the randomly generated number, the algorithm moves to the hyperparameters of the neighboring solution.  This means that while `T` is large, *almost all new solutions are preferred regardless of their score*.  As `T` decreases, the likelihood of moving to hyperparameters resulting in a poor solution decreases.  
 
 Dependencies
 ===
@@ -36,6 +36,15 @@ Simulated Annealing was written on a OS X 10.10.5 and using Python 2.7.10.  Exte
 Important Info Regarding Scoring
 ===
 This implementation of Simulated Annealing can use any of the built-in SciKit Learn scoring metrics or any other scoring function/object with the signature `score(estimator, X, y)`.  It is important to note that during the annealing process, the algorithm will always be ***maximizing*** the score.  So if you intend on finding optimal hyperparameters for a regression algorithm, it is important to multiply your scoring metric by -1.  
+
+
+Help Me Select a Cooling Schedule
+===
+While there are lots of researchers looking into best practices for selecting a cooling schedule, I've had good results with the following practices.  Early on, it's good if the algorithm is pretty indiscriminate.  To achieve this, the acceptance probability should be close to or greater than 1 for all values of `score_new - score_old`.  For scoring metrics that take on values [0, 1], this means setting `T >> 1`.  However, you don't want the algorithm to spend too much time with the temperature this high because it does't care much about moving towards better solutions.  Thus, for initial temperatures that are high, use values of `alpha` that will result in rapid cooling: 0.5 < `alpha` < 0.8.  Lastly, with a rapid cooling schedule, select a `T_min` that is low enough to properly explore the input hyperparamter space, e.g `T_min = 0.0001`.
+
+To calculate the number of steps in the cooling schedule use:
+
+k = (log(`T_min`) - log(`T`)) / log(`alpha`)
 
 Example
 ===
