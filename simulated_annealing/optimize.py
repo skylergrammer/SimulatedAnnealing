@@ -2,7 +2,6 @@ import sys
 import time
 from copy import copy
 import random
-from itertools import product
 import sklearn.cross_validation as cross_validation
 from sklearn.base import clone
 import numpy as np
@@ -85,15 +84,14 @@ class SimulatedAnneal(object):
         max_runtime = self.__max_runtime
         cv = self.__cv
 
-        # List of all possible parameter combinations
-        possible_params = list(product(*grid.values()))
-
         # Computes the acceptance probability as a function of T; maximization
         accept_prob = lambda old, new, T: np.exp((new-old)/T)
 
-        # Compute the initial score based off randomly selected param
+        # Select random values for each parameter and convert to dict
+        old_params = dict([(k, np.random.choice(v)) for k,v in grid.items()])
+
+        # Compute the initial score based off randomly selected params
         old_est = clone(self.__est)
-        old_params = dict(zip(grid.keys(), random.choice(possible_params)))
         old_est.set_params(**old_params)
 
         if self.__n_jobs > 1:
@@ -127,8 +125,8 @@ class SimulatedAnneal(object):
                 total_iter += 1
                 # Move to a random neighboring point in param space
                 new_params = copy(old_params)
-                rand_key = random.choice(grid.keys())
-                new_rand_key_val = random.choice([v for v in grid[rand_key]
+                rand_key = np.random.choice(grid.keys())
+                new_rand_key_val = np.random.choice([v for v in grid[rand_key]
                                                   if v != old_params[rand_key]])
                 new_params[rand_key] = new_rand_key_val
                 try:
