@@ -179,6 +179,11 @@ class SimulatedAnneal(object):
 
 class MultiProcCvFolds(object):
     def __init__(self, clf, metric, cv, n_jobs=1, verbose=0, pre_dispatch='2*n_jobs'):
+        try:
+            cv = int(cv)
+        except:
+            cv = cv
+
         self.clf = clf
         self.metric = get_scorer(metric)
         self.cv = cv
@@ -188,7 +193,9 @@ class MultiProcCvFolds(object):
 
     def fit_score(self, X, Y):
         if isinstance(self.cv, int):
-            self.cv = cross_validation.KFold(len(y), n_folds=self.__cv)
+            n_folds = self.cv
+            self.cv = cross_validation.KFold(len(Y), n_folds=n_folds)
+
         out = Parallel(
             n_jobs=self.n_jobs, verbose=self.verbose,
             pre_dispatch=self.pre_dispatch
