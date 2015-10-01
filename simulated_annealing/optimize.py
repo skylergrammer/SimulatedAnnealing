@@ -88,8 +88,9 @@ class SimulatedAnneal(object):
         accept_prob = lambda old, new, T: np.exp((new-old)/T)
 
         # Select random values for each parameter and convert to dict
-        old_params = dict((k, val.rvs() if hasattr(val, 'rvs') else \
-                                   np.random.choice(val)) for k, val in grid.iteritems())
+        old_params = dict((k, val.rvs() if hasattr(val, 'rvs')
+                          else np.random.choice(val))
+                          for k, val in grid.iteritems())
 
         # Compute the initial score based off randomly selected params
         old_est = clone(self.__est)
@@ -128,8 +129,10 @@ class SimulatedAnneal(object):
                 new_params = copy(old_params)
                 rand_key = np.random.choice(grid.keys())
                 val = grid[rand_key]
-                new_rand_key_val = val.rvs() if hasattr(val, 'rvs') else \
-                                   np.random.choice(v for v in grid[rand_key] if v != old_params[rand_key])
+                if hasattr(val, 'rvs'):
+                    new_rand_key_val = val.rvs()
+                else:
+                    new_rand_key_val = np.random.choice([v for v in grid[rand_key] if v != old_params[rand_key]])
                 new_params[rand_key] = new_rand_key_val
                 try:
                     # Look to see if the score has been computed for the given params
