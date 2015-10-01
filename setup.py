@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name = "simulated_annealing",
     packages = find_packages(),
-    version = "0.1.3",
+    version = "0.1.4",
     author='Skyler Grammer, Andrew Nystrom',
     author_email="skylergrammer@gmail.com, awnystrom@gmail.com",
     description = "A Simulated Annealing implimentation with a scikit-learn style API backed by joblib for speed.",
