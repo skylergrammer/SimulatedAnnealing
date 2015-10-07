@@ -13,7 +13,7 @@ class SimulatedAnneal(object):
     def __init__(self, estimator, param_grid, scoring='f1_macro',
                  T=10, T_min=0.0001, alpha=0.75, n_trans=10,
                  max_iter=300, max_runtime=300, cv=3,
-                 verbose=False, refit=True, n_jobs=1):
+                 verbose=False, refit=True, n_jobs=1, max_score=np.inf):
 
         assert alpha <= 1.0
         assert T > T_min
@@ -63,7 +63,8 @@ class SimulatedAnneal(object):
         self.__cv = cv
         self.__refit = refit
         self.__n_jobs = n_jobs
-
+        self.__max_score = max_score
+        
         # Exposed attributes
         self._scorer = scoring
         self.best_params_ = None
@@ -83,6 +84,7 @@ class SimulatedAnneal(object):
         grid = self.__grid
         max_runtime = self.__max_runtime
         cv = self.__cv
+        new_score = -np.inf
 
         # Computes the acceptance probability as a function of T; maximization
         accept_prob = lambda old, new, T: np.exp((new-old)/T)
@@ -120,9 +122,9 @@ class SimulatedAnneal(object):
         dt = lambda t0,t1: t1-t0 if t0 is not None else 0
         t_elapsed = dt(time_at_start, time.time())
 
-        while T > T_min and total_iter < max_iter and t_elapsed < max_runtime:
+        while T > T_min and total_iter < max_iter and t_elapsed < max_runtime and new_score < self.__max_score:
             iter_ = 0
-            while iter_ < n_trans:
+            while iter_ < n_trans and new_score < self.__max_score:
                 total_iter += 1
                 # Move to a random neighboring point in param space
                 new_params = copy(old_params)
@@ -141,6 +143,10 @@ class SimulatedAnneal(object):
                     new_score, new_std = MultiProcCvFolds(new_est, score_func, cv, self.__n_jobs,
                                                           self.__verbose).fit_score(X, y)
                     states_checked[tuple(sorted(new_params.items()))] = (new_score, new_std)
+                    
+                if new_score >= self.__max_score:
+                    break
+                    
                 grid_scores.append((total_iter, T, new_score, new_std, new_params))
 
                 # Keep track of the best score and best params
@@ -163,6 +169,8 @@ class SimulatedAnneal(object):
 
                 t_elapsed = dt(time_at_start, time.time())
                 iter_ += 1
+            if new_score >= self.__max_score:
+                break
             T *= alpha
 
         if self.__refit:
