@@ -53,6 +53,7 @@ from sklearn.cross_validation import train_test_split
 from sklearn import svm, datasets
 from sklearn.metrics import classification_report
 from simulated_annealing.optimize import SimulatedAnneal
+import numpy as np
 
 # Load the Iris data set
 iris = datasets.load_iris()
