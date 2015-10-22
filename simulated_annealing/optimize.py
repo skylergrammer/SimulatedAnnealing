@@ -145,7 +145,6 @@ class SimulatedAnneal(object):
                     new_est.set_params(**new_params)
                     new_score, new_std = MultiProcCvFolds(new_est, score_func, cv, self.__n_jobs,
                                                           self.__verbose).fit_score(X, y)
-                    print(tuple(sorted(new_params.items())))
                     states_checked[tuple(sorted(new_params.items()))] = (new_score, new_std)
 
                 if new_score >= self.__max_score:
