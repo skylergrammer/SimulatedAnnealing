@@ -64,7 +64,7 @@ class SimulatedAnneal(object):
         self.__refit = refit
         self.__n_jobs = n_jobs
         self.__max_score = max_score
-        
+
         # Exposed attributes
         self._scorer = scoring
         self.best_params_ = None
@@ -92,7 +92,7 @@ class SimulatedAnneal(object):
         # Select random values for each parameter and convert to dict
         old_params = dict((k, val.rvs() if hasattr(val, 'rvs')
                           else np.random.choice(val))
-                          for k, val in grid.iteritems())
+                          for k, val in grid.items())
 
         # Compute the initial score based off randomly selected params
         old_est = clone(self.__est)
@@ -129,7 +129,7 @@ class SimulatedAnneal(object):
                 total_iter += 1
                 # Move to a random neighboring point in param space
                 new_params = copy(old_params)
-                rand_key = np.random.choice(grid.keys())
+                rand_key = np.random.choice(list(grid))
                 val = grid[rand_key]
                 if hasattr(val, 'rvs'):
                     new_rand_key_val = val.rvs()
@@ -145,11 +145,12 @@ class SimulatedAnneal(object):
                     new_est.set_params(**new_params)
                     new_score, new_std = MultiProcCvFolds(new_est, score_func, cv, self.__n_jobs,
                                                           self.__verbose).fit_score(X, y)
+                    print(tuple(sorted(new_params.items())))
                     states_checked[tuple(sorted(new_params.items()))] = (new_score, new_std)
-                    
+
                 if new_score >= self.__max_score:
                     break
-                    
+
                 grid_scores.append((total_iter, T, new_score, new_std, new_params))
 
                 # Keep track of the best score and best params
@@ -217,7 +218,7 @@ class MultiProcCvFolds(object):
                 for train, test in self.cv)
 
         # Out is a list of triplet: score, estimator, n_test_samples
-        scores = zip(*out)[0]
+        scores = list(zip(*out))
         return np.mean(scores), np.std(scores)
 
 
