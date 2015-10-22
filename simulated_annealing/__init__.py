@@ -1,1 +1,1 @@
-from optimize import SimulatedAnneal
+from .optimize import SimulatedAnneal
