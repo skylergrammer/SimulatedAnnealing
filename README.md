@@ -2,6 +2,8 @@ Simulated Annealing
 ===
 This module provides a hyperparameter optimization using simulated annealing.  It has a SciKit-Learn-style API and uses multiprocessing for the fitting and scoring of the cross validation folds.  The benefit of using Simulated Annealing over an exhaustive grid search is that Simulated Annealing is a heuristic search algorithm that is immune to getting stuck in local minima or maxima.  
 
+Note: this module is now compatible with both python 2.7 and python 3.x.
+
 Installation
 ===
 Installation can be performed using pip:
@@ -73,10 +75,10 @@ sa = SimulatedAnneal(clf, svc_params, T=10.0, T_min=0.001, alpha=0.75,
                          cv=3, scoring='f1_macro', refit=True)
 sa.fit(X_train, y_train)
 # Print the best score and the best params
-print sa.best_score_, sa.best_params_
+print(sa.best_score_, sa.best_params_)
 # Use the best estimator to predict classes
 optimized_clf = sa.best_estimator_
 y_test_pred = optimized_clf.predict(X_test)
 # Print a report of precision, recall, f1_score
-print classification_report(y_test, y_test_pred)
+print(classification_report(y_test, y_test_pred))
 ```
