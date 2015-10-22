@@ -217,7 +217,7 @@ class MultiProcCvFolds(object):
                 for train, test in self.cv)
 
         # Out is a list of triplet: score, estimator, n_test_samples
-        scores = list(zip(*out))
+        scores = list(zip(*out))[0]
         return np.mean(scores), np.std(scores)
 
 
