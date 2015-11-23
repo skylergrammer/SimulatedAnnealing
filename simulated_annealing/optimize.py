@@ -134,7 +134,10 @@ class SimulatedAnneal(object):
                 if hasattr(val, 'rvs'):
                     new_rand_key_val = val.rvs()
                 else:
-                    new_rand_key_val = np.random.choice([v for v in grid[rand_key] if v != old_params[rand_key]])
+                    sampel_space = [v for v in grid[rand_key] if v != old_params[rand_key]]
+                    if not sampel_space:
+                      sampel_space = grid[rand_key]
+                    new_rand_key_val = np.random.choice(sampel_space)
                 new_params[rand_key] = new_rand_key_val
                 try:
                     # Look to see if the score has been computed for the given params
