@@ -2,18 +2,18 @@ import sys
 import time
 from copy import copy
 import random
-import sklearn.cross_validation as cross_validation
-from sklearn.base import clone
 import numpy as np
+from sklearn.base import clone
 from sklearn.metrics.scorer import get_scorer
 from sklearn.externals.joblib import Parallel, delayed
-from sklearn.cross_validation import _fit_and_score
+from sklearn.model_selection import model_selection
+from sklearn.model_selection._validation import _fit_and_score
 
 class SimulatedAnneal(object):
-    def __init__(self, estimator, param_grid, scoring='f1_macro',
+    def __init__(self, estimator, param_grid, scoring='roc_auc',
                  T=10, T_min=0.0001, alpha=0.75, n_trans=10,
                  max_iter=300, max_runtime=300, cv=3,
-                 verbose=False, refit=True, n_jobs=1, max_score=np.inf):
+                 verbose=False, refit=True, n_jobs=4, max_score=np.inf):
 
         assert alpha <= 1.0
         assert T > T_min
@@ -163,8 +163,8 @@ class SimulatedAnneal(object):
                 if self.__verbose:
                     print("%s T: %s, score: %s, std: %s, params: %s"
                           % (str(total_iter), '{:.5f}'.format(T),
-                             '{:.3f}'.format(new_score), '{:.3f}'.format(new_std),
-                             str(new_params)))
+                             '{:.6f}'.format(new_score), '{:.6f}'.format(new_std),
+                             str({key: round(value, 3) for key, value in new_params.items()})))
 
                 # Decide whether to keep old params or move to new params
                 a = accept_prob(old_score, new_score, T)
@@ -207,7 +207,7 @@ class MultiProcCvFolds(object):
     def fit_score(self, X, Y):
         if isinstance(self.cv, int):
             n_folds = self.cv
-            self.cv = cross_validation.KFold(len(Y), n_folds=n_folds)
+            self.cv = model_selection.KFold(len(Y), n_folds=n_folds)
 
         out = Parallel(
             n_jobs=self.n_jobs, verbose=self.verbose,
@@ -236,7 +236,7 @@ class CVFolds(object):
 
     def fit_score(self, X, y):
         if isinstance(self.__cv, int):
-            cross_valid = cross_validation.KFold(len(y), n_folds=self.__cv)
+            cross_valid = model_selection.KFold(len(y), n_folds=self.__cv)
         else:
             cross_valid = self.__cv
         scorer = self.__scorer
