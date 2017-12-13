@@ -207,7 +207,7 @@ class MultiProcCvFolds(object):
     def fit_score(self, X, Y):
         if isinstance(self.cv, int):
             n_folds = self.cv
-            self.cv = model_selection.KFold(len(Y), n_folds=n_folds)
+            self.cv = model_selection.KFold(len(Y), n_splits=n_folds)
 
         out = Parallel(
             n_jobs=self.n_jobs, verbose=self.verbose,
@@ -236,7 +236,7 @@ class CVFolds(object):
 
     def fit_score(self, X, y):
         if isinstance(self.__cv, int):
-            cross_valid = model_selection.KFold(len(y), n_folds=self.__cv)
+            cross_valid = model_selection.KFold(len(y), n_splits=self.__cv)
         else:
             cross_valid = self.__cv
         scorer = self.__scorer
