@@ -14,7 +14,7 @@ class SimulatedAnneal(object):
     def __init__(self, estimator, param_grid, scoring='roc_auc',
                  T=10, T_min=0.0001, alpha=0.75, n_trans=10,
                  max_iter=300, max_runtime=300, cv=3,
-                 verbose=False, refit=True, n_jobs=4, max_score=np.inf):
+                 verbose=False, refit=True, n_jobs=1, max_score=np.inf):
 
         assert alpha <= 1.0
         assert T > T_min
