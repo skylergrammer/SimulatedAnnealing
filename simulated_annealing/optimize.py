@@ -3,17 +3,18 @@ import time
 from copy import copy
 import random
 import numpy as np
+import pandas as pd
 from sklearn.base import clone
 from sklearn.metrics.scorer import get_scorer
 from sklearn.externals.joblib import Parallel, delayed
-from sklearn.model_selection import model_selection
+from sklearn.model_selection import KFold
 from sklearn.model_selection._validation import _fit_and_score
 
 class SimulatedAnneal(object):
     def __init__(self, estimator, param_grid, scoring='roc_auc',
                  T=10, T_min=0.0001, alpha=0.75, n_trans=10,
                  max_iter=300, max_runtime=300, cv=3,
-                 verbose=False, refit=True, n_jobs=4, max_score=np.inf):
+                 verbose=False, refit=True, n_jobs=1, max_score=np.inf):
 
         assert alpha <= 1.0
         assert T > T_min
@@ -74,6 +75,13 @@ class SimulatedAnneal(object):
         self.runtime_ = None
 
     def fit(self, X, y):
+        # If types of X, y are dataframe, convert to matrix
+        if isinstance(X,pd.DataFrame):
+            X=X.as_matrix()
+        if isinstance(y,pd.DataFrame):
+            y=y.as_matrix()
+        elif isinstance(y,list) or isinstance(y, pd.Series):
+            y=np.array(y)
         # Set up  the initial params
         T = self.__T
         T_min = self.__T_min
@@ -207,7 +215,7 @@ class MultiProcCvFolds(object):
     def fit_score(self, X, Y):
         if isinstance(self.cv, int):
             n_folds = self.cv
-            self.cv = model_selection.KFold(len(Y), n_splits=n_folds)
+            self.cv = KFold(n_splits=n_folds).split(X)
 
         out = Parallel(
             n_jobs=self.n_jobs, verbose=self.verbose,
@@ -236,7 +244,7 @@ class CVFolds(object):
 
     def fit_score(self, X, y):
         if isinstance(self.__cv, int):
-            cross_valid = model_selection.KFold(len(y), n_splits=self.__cv)
+            cross_valid = KFold(n_splits=self.__cv).split(X)
         else:
             cross_valid = self.__cv
         scorer = self.__scorer
