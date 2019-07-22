@@ -10,7 +10,21 @@ from sklearn.externals.joblib import Parallel, delayed
 from sklearn.model_selection import KFold
 from sklearn.model_selection._validation import _fit_and_score
 
-class SimulatedAnneal(object):
+
+def accept_prob(old, new, T):
+    # No div by zero errors
+    T += 0.01
+    return np.exp((new-old)/T)
+
+
+def dt(t0, t1):
+    if t0 is not None:
+        return t1-t0
+    else:
+        return 0
+
+
+class SimulatedAnneal():
     def __init__(self, estimator, param_grid, scoring='roc_auc',
                  T=10, T_min=0.0001, alpha=0.75, n_trans=10,
                  max_iter=300, max_runtime=300, cv=3,
@@ -18,13 +32,13 @@ class SimulatedAnneal(object):
 
         assert alpha <= 1.0
         assert T > T_min
-        assert isinstance(param_grid, dict) or isinstance(param_grid, list)
+        assert isinstance(param_grid, (dict, list))
         # If param_grid is a list of dicts, convert to a single dict
         if isinstance(param_grid, list):
             try:
                 param_grid_dict = {}
                 for each in param_grid:
-                    k,v = each.items()[0]
+                    k, v = each.items()[0]
                     param_grid_dict[k] = v
                 param_grid = param_grid_dict
             except:
@@ -76,12 +90,12 @@ class SimulatedAnneal(object):
 
     def fit(self, X, y):
         # If types of X, y are dataframe, convert to matrix
-        if isinstance(X,pd.DataFrame):
-            X=X.as_matrix()
-        if isinstance(y,pd.DataFrame):
-            y=y.as_matrix()
-        elif isinstance(y,list) or isinstance(y, pd.Series):
-            y=np.array(y)
+        if isinstance(X, pd.DataFrame):
+            X = X.as_matrix()
+        if isinstance(y, pd.DataFrame):
+            y = y.as_matrix()
+        elif isinstance(y, (list, pd.Series)):
+            y = np.array(y)
         # Set up  the initial params
         T = self.__T
         T_min = self.__T_min
@@ -94,12 +108,9 @@ class SimulatedAnneal(object):
         cv = self.__cv
         new_score = -np.inf
 
-        # Computes the acceptance probability as a function of T; maximization
-        accept_prob = lambda old, new, T: np.exp((new-old)/T)
-
         # Select random values for each parameter and convert to dict
         old_params = dict((k, val.rvs() if hasattr(val, 'rvs')
-                          else np.random.choice(val))
+                           else np.random.choice(val))
                           for k, val in grid.items())
 
         # Compute the initial score based off randomly selected params
@@ -128,7 +139,6 @@ class SimulatedAnneal(object):
             time_at_start = None
         else:
             time_at_start = time.time()
-        dt = lambda t0,t1: t1-t0 if t0 is not None else 0
         t_elapsed = dt(time_at_start, time.time())
 
         while T > T_min and total_iter < max_iter and t_elapsed < max_runtime and new_score < self.__max_score:
@@ -144,7 +154,7 @@ class SimulatedAnneal(object):
                 else:
                     sampel_space = [v for v in grid[rand_key] if v != old_params[rand_key]]
                     if not sampel_space:
-                      sampel_space = grid[rand_key]
+                        sampel_space = grid[rand_key]
                     new_rand_key_val = np.random.choice(sampel_space)
                 new_params[rand_key] = new_rand_key_val
                 try:
@@ -169,10 +179,9 @@ class SimulatedAnneal(object):
                     best_params = new_params
 
                 if self.__verbose:
-                    print("%s T: %s, score: %s, std: %s, params: %s"
-                          % (str(total_iter), '{:.5f}'.format(T),
-                             '{:.6f}'.format(new_score), '{:.6f}'.format(new_std),
-                             str({key: round(value, 3) for key, value in new_params.items()})))
+                    print("{} T: {:.5f}, score: {:.6f}, std: {:.6f}, params: {}"
+                          .format(total_iter, T, new_score, new_std,
+                                  {k: v for k, v in new_params.items()}))
 
                 # Decide whether to keep old params or move to new params
                 a = accept_prob(old_score, new_score, T)
@@ -184,6 +193,7 @@ class SimulatedAnneal(object):
                 t_elapsed = dt(time_at_start, time.time())
                 iter_ += 1
             if new_score >= self.__max_score:
+                print("Max score reached {}!".format(new_score))
                 break
             T *= alpha
 
@@ -198,7 +208,8 @@ class SimulatedAnneal(object):
         self.best_score_ = best_score
         self.best_params_ = best_params
 
-class MultiProcCvFolds(object):
+
+class MultiProcCvFolds():
     def __init__(self, clf, metric, cv, n_jobs=1, verbose=0, pre_dispatch='2*n_jobs'):
         try:
             cv = int(cv)
@@ -217,22 +228,22 @@ class MultiProcCvFolds(object):
             n_folds = self.cv
             self.cv = KFold(n_splits=n_folds).split(X)
 
-        out = Parallel(
-            n_jobs=self.n_jobs, verbose=self.verbose,
-            pre_dispatch=self.pre_dispatch
-        )(
-            delayed(_fit_and_score)(clone(self.clf), X, Y, self.metric,
-                                    train, test, self.verbose, {},
-                                    {}, return_parameters=False,
-                                    error_score='raise')
-                for train, test in self.cv)
+        # Formatting is kinda ugly but provides best debugging view
+        out = Parallel(n_jobs=self.n_jobs,
+                       verbose=self.verbose,
+                       pre_dispatch=self.pre_dispatch)\
+            (delayed(_fit_and_score)(clone(self.clf), X, Y, self.metric,
+                                     train, test, self.verbose, {},
+                                     {}, return_parameters=False,
+                                     error_score='raise')
+             for train, test in self.cv)
 
         # Out is a list of triplet: score, estimator, n_test_samples
         scores = list(zip(*out))[0]
         return np.mean(scores), np.std(scores)
 
 
-class CVFolds(object):
+class CVFolds():
     def __init__(self, estimator, scorer, cv=3):
         try:
             cv = int(cv)

@@ -51,7 +51,7 @@ k = (log(`T_min`) - log(`T`)) / log(`alpha`)
 Example
 ===
 ```python
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn import svm, datasets
 from sklearn.metrics import classification_report
 from simulated_annealing.optimize import SimulatedAnneal
@@ -71,7 +71,7 @@ svc_params = {'C':np.logspace(-8, 10, 19, base=2),
 clf = svm.LinearSVC()
 # Initialize Simulated Annealing and fit
 sa = SimulatedAnneal(clf, svc_params, T=10.0, T_min=0.001, alpha=0.75,
-                         verbose=True, max_iter=0.25, n_trans=5, max_runtime=300,
+                         verbose=True, max_iter=1, n_trans=5, max_runtime=300,
                          cv=3, scoring='f1_macro', refit=True)
 sa.fit(X_train, y_train)
 # Print the best score and the best params
