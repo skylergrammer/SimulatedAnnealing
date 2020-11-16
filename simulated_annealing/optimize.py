@@ -1,12 +1,13 @@
 import sys
 import time
-from copy import copy
 import random
+from copy import copy
+
 import numpy as np
+from joblib import Parallel, delayed
 import pandas as pd
 from sklearn.base import clone
 from sklearn.metrics.scorer import get_scorer
-from sklearn.externals.joblib import Parallel, delayed
 from sklearn.model_selection import KFold
 from sklearn.model_selection._validation import _fit_and_score
 
@@ -229,14 +230,16 @@ class MultiProcCvFolds():
             self.cv = KFold(n_splits=n_folds).split(X)
 
         # Formatting is kinda ugly but provides best debugging view
-        out = Parallel(n_jobs=self.n_jobs,
-                       verbose=self.verbose,
-                       pre_dispatch=self.pre_dispatch)\
-            (delayed(_fit_and_score)(clone(self.clf), X, Y, self.metric,
-                                     train, test, self.verbose, {},
-                                     {}, return_parameters=False,
-                                     error_score='raise')
-             for train, test in self.cv)
+        out = Parallel(
+            n_jobs=self.n_jobs,
+            verbose=self.verbose,
+            pre_dispatch=self.pre_dispatch)(
+                delayed(_fit_and_score)(
+                    clone(self.clf), X, Y, self.metric,
+                    train, test, self.verbose, {},
+                    {}, return_parameters=False,
+                    error_score='raise')
+                for train, test in self.cv)
 
         # Out is a list of triplet: score, estimator, n_test_samples
         scores = list(zip(*out))[0]
