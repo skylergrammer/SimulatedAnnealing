@@ -10,7 +10,7 @@ setup(
     url="https://github.com/skylergrammer/SimulatedAnnealing",
     keywords=["simulated", "annealing", "parameter", "hyperparameter", "optimization", "optimisation", "model", "selection"],
     license="Apache 2.0",
-    install_requires=['scikit-learn>=0.16.0', 'numpy>=1.9.0', 'joblib=>0.17.0'],
+    install_requires=['scikit-learn>=0.16.0', 'numpy>=1.9.0', 'joblib>=0.17.0'],
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
